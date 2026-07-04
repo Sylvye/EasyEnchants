@@ -1,0 +1,20 @@
+.gradle/
+build/
+
+# IDE/editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Java/Gradle artifacts
+*.class
+*.jar
+*.war
+*.ear
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
