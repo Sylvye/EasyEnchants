@@ -75,4 +75,30 @@ class EasyEnchantsSettingsGuiTest extends BukkitTestSupport {
 
         assertTrue(event.isCancelled());
     }
+
+    @Test
+    void shiftClickFromBottomInventoryIsCancelled() {
+        EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
+        EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);
+        settings.load();
+        EasyEnchantsSettingsGui gui = new EasyEnchantsSettingsGui(settings);
+        EasyEnchantsListener listener = new EasyEnchantsListener(settings, gui, new EnchantedBookApplicator());
+        PlayerMock player = MockBukkit.getMock().addPlayer("Admin");
+        player.setOp(true);
+        gui.open(player);
+
+        InventoryView view = player.getOpenInventory();
+        InventoryClickEvent event = new InventoryClickEvent(
+            view,
+            InventoryType.SlotType.CONTAINER,
+            view.getTopInventory().getSize(),
+            ClickType.SHIFT_LEFT,
+            InventoryAction.MOVE_TO_OTHER_INVENTORY
+        );
+        event.setCurrentItem(new ItemStack(Material.DIAMOND));
+
+        listener.onInventoryClick(event);
+
+        assertTrue(event.isCancelled());
+    }
 }

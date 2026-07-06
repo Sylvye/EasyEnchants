@@ -3,7 +3,7 @@ version: ${version}
 main: me.easyenchants.EasyEnchantsPlugin
 api-version: '1.21.11'
 description: Simplified enchanting systems for Paper servers.
-author: EasyEnchants
+author: Sylvye
 commands:
   easyenchants:
     description: Open the EasyEnchants settings menu.

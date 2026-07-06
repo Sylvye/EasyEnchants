@@ -12,6 +12,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -76,13 +77,22 @@ public final class EasyEnchantsListener implements Listener {
         if (!(holder instanceof EasyEnchantsSettingsMenuHolder)) {
             return false;
         }
-        if (event.getClickedInventory() == event.getView().getTopInventory()) {
+        boolean topClick = event.getClickedInventory() == event.getView().getTopInventory();
+        if (topClick) {
             event.setCancelled(true);
             if (event.getWhoClicked() instanceof Player player) {
                 settingsGui.handleClick(player, event.getRawSlot());
             }
+        } else if (movesItemsAcrossInventories(event.getAction())) {
+            event.setCancelled(true);
         }
         return true;
+    }
+
+    private boolean movesItemsAcrossInventories(InventoryAction action) {
+        return action == InventoryAction.MOVE_TO_OTHER_INVENTORY
+            || action == InventoryAction.COLLECT_TO_CURSOR
+            || action == InventoryAction.UNKNOWN;
     }
 
     private boolean isPlayerInventoryClick(InventoryClickEvent event) {
