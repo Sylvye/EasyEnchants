@@ -1,3 +1,5 @@
 branches:
   drag-and-drop-books:
     enabled: true
+  librarian-rolling:
+    enabled: true

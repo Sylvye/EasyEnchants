@@ -13,7 +13,8 @@ import java.util.List;
 
 public final class EasyEnchantsSettingsGui {
     private static final int INVENTORY_SIZE = 27;
-    private static final int DRAG_DROP_BOOKS_SLOT = 13;
+    private static final int DRAG_DROP_BOOKS_SLOT = 11;
+    private static final int LIBRARIAN_ROLLING_SLOT = 15;
     private static final String ADMIN_PERMISSION = "easyenchants.admin";
 
     private final EasyEnchantsSettings settings;
@@ -32,6 +33,7 @@ public final class EasyEnchantsSettingsGui {
         Inventory inventory = Bukkit.createInventory(holder, INVENTORY_SIZE, Component.text("EasyEnchants Settings", NamedTextColor.GOLD));
         holder.setInventory(inventory);
         inventory.setItem(DRAG_DROP_BOOKS_SLOT, dragDropBooksToggle());
+        inventory.setItem(LIBRARIAN_ROLLING_SLOT, librarianRollingToggle());
         player.openInventory(inventory);
     }
 
@@ -40,11 +42,15 @@ public final class EasyEnchantsSettingsGui {
             player.closeInventory();
             return;
         }
-        if (rawSlot != DRAG_DROP_BOOKS_SLOT) {
+        if (rawSlot == DRAG_DROP_BOOKS_SLOT) {
+            settings.toggleDragAndDropBooks();
+            open(player);
             return;
         }
-        settings.toggleDragAndDropBooks();
-        open(player);
+        if (rawSlot == LIBRARIAN_ROLLING_SLOT) {
+            settings.toggleLibrarianRolling();
+            open(player);
+        }
     }
 
     private ItemStack dragDropBooksToggle() {
@@ -52,6 +58,15 @@ public final class EasyEnchantsSettingsGui {
         return GuiItems.namedItem(
             enabled ? Material.LIME_DYE : Material.GRAY_DYE,
             Component.text("Drag & Drop Books: " + (enabled ? "Enabled" : "Disabled"), enabled ? NamedTextColor.GREEN : NamedTextColor.RED),
+            List.of(Component.text("Click to toggle.", NamedTextColor.GRAY))
+        );
+    }
+
+    private ItemStack librarianRollingToggle() {
+        boolean enabled = settings.librarianRollingEnabled();
+        return GuiItems.namedItem(
+            enabled ? Material.LIME_DYE : Material.GRAY_DYE,
+            Component.text("Librarian Rolling: " + (enabled ? "Enabled" : "Disabled"), enabled ? NamedTextColor.GREEN : NamedTextColor.RED),
             List.of(Component.text("Click to toggle.", NamedTextColor.GRAY))
         );
     }

@@ -39,7 +39,7 @@ class EasyEnchantsSettingsGuiTest extends BukkitTestSupport {
         InventoryClickEvent event = new InventoryClickEvent(
             view,
             InventoryType.SlotType.CONTAINER,
-            13,
+            11,
             ClickType.LEFT,
             InventoryAction.PICKUP_ALL
         );
@@ -50,6 +50,34 @@ class EasyEnchantsSettingsGuiTest extends BukkitTestSupport {
         assertTrue(event.isCancelled());
         assertFalse(settings.dragAndDropBooksEnabled());
         assertInstanceOf(EasyEnchantsSettingsMenuHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+    }
+
+    @Test
+    void librarianRollingToggleUpdatesSetting() {
+        EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
+        EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);
+        settings.load();
+        EasyEnchantsSettingsGui gui = new EasyEnchantsSettingsGui(settings);
+        EasyEnchantsListener listener = new EasyEnchantsListener(settings, gui, new EnchantedBookApplicator());
+        PlayerMock player = MockBukkit.getMock().addPlayer("Admin");
+        player.setOp(true);
+        gui.open(player);
+
+        InventoryView view = player.getOpenInventory();
+        InventoryClickEvent event = new InventoryClickEvent(
+            view,
+            InventoryType.SlotType.CONTAINER,
+            15,
+            ClickType.LEFT,
+            InventoryAction.PICKUP_ALL
+        );
+
+        assertTrue(settings.librarianRollingEnabled());
+        listener.onInventoryClick(event);
+
+        assertTrue(event.isCancelled());
+        assertFalse(settings.librarianRollingEnabled());
+        assertFalse(plugin.getConfig().getBoolean("branches.librarian-rolling.enabled"));
     }
 
     @Test
