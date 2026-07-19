@@ -20,15 +20,23 @@ import org.bukkit.potion.PotionEffectType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.IntUnaryOperator;
 import java.util.UUID;
 
 public final class LibrarianRollingService {
     private final NamespacedKey pendingEnchantmentKey;
     private final NamespacedKey pendingLevelKey;
+    private final IntUnaryOperator randomInt;
 
     public LibrarianRollingService(Plugin plugin) {
+        this(plugin, bound -> ThreadLocalRandom.current().nextInt(bound));
+    }
+
+    LibrarianRollingService(Plugin plugin, IntUnaryOperator randomInt) {
         pendingEnchantmentKey = new NamespacedKey(plugin, "pending_librarian_enchantment");
         pendingLevelKey = new NamespacedKey(plugin, "pending_librarian_level");
+        this.randomInt = randomInt;
     }
 
     public boolean isUnlockedLibrarian(Villager villager) {
@@ -52,8 +60,7 @@ public final class LibrarianRollingService {
             return false;
         }
 
-        ItemStack book = enchantedBook(option);
-        if (!replaceFirstBookTrade(villager, book)) {
+        if (!replaceFirstBookTrade(villager, option)) {
             storePending(villager, option);
         }
 
@@ -69,26 +76,26 @@ public final class LibrarianRollingService {
             return null;
         }
         clearPending(villager);
-        return replacementRecipe(recipe, enchantedBook(option));
+        return replacementRecipe(recipe, option);
     }
 
-    private boolean replaceFirstBookTrade(Villager villager, ItemStack book) {
+    private boolean replaceFirstBookTrade(Villager villager, LibrarianBookOption option) {
         List<MerchantRecipe> recipes = new ArrayList<>(villager.getRecipes());
         for (int index = 0; index < recipes.size(); index++) {
             MerchantRecipe recipe = recipes.get(index);
             if (recipe.getResult().getType() != Material.ENCHANTED_BOOK) {
                 continue;
             }
-            recipes.set(index, replacementRecipe(recipe, book));
+            recipes.set(index, replacementRecipe(recipe, option));
             villager.setRecipes(recipes);
             return true;
         }
         return false;
     }
 
-    private MerchantRecipe replacementRecipe(MerchantRecipe original, ItemStack result) {
+    private MerchantRecipe replacementRecipe(MerchantRecipe original, LibrarianBookOption option) {
         MerchantRecipe replacement = new MerchantRecipe(
-            result,
+            enchantedBook(option),
             original.getUses(),
             original.getMaxUses(),
             original.hasExperienceReward(),
@@ -98,10 +105,20 @@ public final class LibrarianRollingService {
             original.getSpecialPrice(),
             original.shouldIgnoreDiscounts()
         );
-        replacement.setIngredients(original.getIngredients().stream()
-            .map(ItemStack::clone)
-            .toList());
+        replacement.setIngredients(List.of(
+            new ItemStack(Material.EMERALD, rollEmeraldCost(option)),
+            new ItemStack(Material.BOOK)
+        ));
         return replacement;
+    }
+
+    int rollEmeraldCost(LibrarianBookOption option) {
+        int level = option.level();
+        int cost = 2 + randomInt.applyAsInt(5 + level * 10) + 3 * level;
+        if (option.enchantment().isTreasure()) {
+            cost *= 2;
+        }
+        return Math.min(cost, 64);
     }
 
     public ItemStack enchantedBook(LibrarianBookOption option) {
