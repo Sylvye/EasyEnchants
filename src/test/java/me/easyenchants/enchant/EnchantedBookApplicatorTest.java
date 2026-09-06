@@ -64,6 +64,31 @@ class EnchantedBookApplicatorTest extends BukkitTestSupport {
     }
 
     @Test
+    void matchingLevelsCombineIntoNextLevel() {
+        ItemStack target = new ItemStack(Material.DIAMOND_SWORD);
+        target.addEnchantment(Enchantment.SHARPNESS, 1);
+        ItemStack book = book(1, Enchantment.SHARPNESS, 1);
+
+        EnchantedBookApplicator.ApplicationResult result = applicator.apply(target, book);
+
+        assertTrue(result.applied());
+        assertEquals(2, result.targetAfter().getEnchantmentLevel(Enchantment.SHARPNESS));
+        assertNull(result.cursorAfter());
+    }
+
+    @Test
+    void matchingMaximumLevelsDoNotExceedMaximum() {
+        ItemStack target = new ItemStack(Material.DIAMOND_SWORD);
+        target.addEnchantment(Enchantment.SHARPNESS, Enchantment.SHARPNESS.getMaxLevel());
+        ItemStack book = book(1, Enchantment.SHARPNESS, Enchantment.SHARPNESS.getMaxLevel());
+
+        EnchantedBookApplicator.ApplicationResult result = applicator.apply(target, book);
+
+        assertFalse(result.applied());
+        assertFalse(result.incompatible());
+    }
+
+    @Test
     void conflictingEnchantIsVoidedWhenAnotherEnchantApplies() {
         ItemStack target = new ItemStack(Material.DIAMOND_SWORD);
         ItemStack book = book(1, Enchantment.SHARPNESS, 3, Enchantment.SMITE, 3, Enchantment.UNBREAKING, 2);
@@ -91,6 +116,7 @@ class EnchantedBookApplicatorTest extends BukkitTestSupport {
         EnchantedBookApplicator.ApplicationResult result = applicator.apply(target, book);
 
         assertFalse(result.applied());
+        assertTrue(result.incompatible());
         assertFalse(target.containsEnchantment(Enchantment.PROTECTION));
         assertEquals(1, book.getAmount());
     }

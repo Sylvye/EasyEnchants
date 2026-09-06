@@ -23,31 +23,38 @@ public final class EnchantedBookApplicator {
         ItemStack updatedTarget = target.clone();
         ItemMeta targetMeta = updatedTarget.getItemMeta();
         boolean changed = false;
+        boolean incompatible = false;
 
         for (Map.Entry<Enchantment, Integer> entry : storedEnchants.entrySet()) {
             Enchantment enchantment = entry.getKey();
             int level = entry.getValue();
             if (level <= 0 || !enchantment.canEnchantItem(updatedTarget)) {
+                incompatible = true;
                 continue;
             }
 
             int clampedLevel = Math.min(level, enchantment.getMaxLevel());
             int currentLevel = targetMeta.getEnchantLevel(enchantment);
-            if (currentLevel >= clampedLevel || conflictsWithExisting(targetMeta, enchantment)) {
+            if (conflictsWithExisting(targetMeta, enchantment)) {
+                incompatible = true;
+                continue;
+            }
+            if (currentLevel > clampedLevel || currentLevel == enchantment.getMaxLevel()) {
                 continue;
             }
 
-            if (targetMeta.addEnchant(enchantment, clampedLevel, false)) {
+            int resultingLevel = currentLevel == clampedLevel ? currentLevel + 1 : clampedLevel;
+            if (targetMeta.addEnchant(enchantment, resultingLevel, false)) {
                 changed = true;
             }
         }
 
         if (!changed) {
-            return ApplicationResult.notApplied();
+            return ApplicationResult.notApplied(incompatible);
         }
 
         updatedTarget.setItemMeta(targetMeta);
-        return new ApplicationResult(true, updatedTarget, consumeOneBook(bookCursor));
+        return new ApplicationResult(true, incompatible, updatedTarget, consumeOneBook(bookCursor));
     }
 
     private boolean isValidTarget(ItemStack target) {
@@ -79,9 +86,13 @@ public final class EnchantedBookApplicator {
         return remaining;
     }
 
-    public record ApplicationResult(boolean applied, ItemStack targetAfter, ItemStack cursorAfter) {
+    public record ApplicationResult(boolean applied, boolean incompatible, ItemStack targetAfter, ItemStack cursorAfter) {
         private static ApplicationResult notApplied() {
-            return new ApplicationResult(false, null, null);
+            return notApplied(false);
+        }
+
+        private static ApplicationResult notApplied(boolean incompatible) {
+            return new ApplicationResult(false, incompatible, null, null);
         }
     }
 }

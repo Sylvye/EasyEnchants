@@ -94,6 +94,21 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
     }
 
     @Test
+    void incompatibleBookClickIsCancelled() {
+        PlayerMock player = MockBukkit.getMock().addPlayer("Player");
+        Inventory chest = Bukkit.createInventory(null, 27);
+        InventoryClickEvent event = playerInventoryClick(player, chest);
+        event.setCursor(book(1, Enchantment.PROTECTION, 4));
+        EasyEnchantsListener listener = listener(true, null);
+
+        listener.onInventoryClick(event);
+
+        assertTrue(event.isCancelled());
+        assertFalse(event.getCurrentItem().containsEnchantment(Enchantment.PROTECTION));
+        assertEquals(1, event.getCursor().getAmount());
+    }
+
+    @Test
     void eligibleLuckRightClickOpensLibrarianRollingGui() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
         LibrarianRollingService service = new LibrarianRollingService(plugin);

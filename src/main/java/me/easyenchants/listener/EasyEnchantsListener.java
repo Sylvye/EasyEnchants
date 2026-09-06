@@ -74,6 +74,10 @@ public final class EasyEnchantsListener implements Listener {
         }
 
         EnchantedBookApplicator.ApplicationResult result = applicator.apply(current, cursor);
+        if (result.incompatible()) {
+            event.setCancelled(true);
+            player.playSound(player.getLocation(), "minecraft:entity.villager.no", SoundCategory.PLAYERS, 1.0F, 1.0F);
+        }
         if (!result.applied()) {
             return;
         }
@@ -81,7 +85,9 @@ public final class EasyEnchantsListener implements Listener {
         event.setCancelled(true);
         event.setCurrentItem(result.targetAfter());
         event.getView().setCursor(result.cursorAfter());
-        player.playSound(player.getLocation(), "minecraft:block.enchantment_table.use", SoundCategory.PLAYERS, 1.0F, 1.0F);
+        if (!result.incompatible()) {
+            player.playSound(player.getLocation(), "minecraft:block.enchantment_table.use", SoundCategory.PLAYERS, 1.0F, 1.0F);
+        }
     }
 
     @EventHandler
