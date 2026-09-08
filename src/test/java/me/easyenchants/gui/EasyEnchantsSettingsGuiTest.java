@@ -81,6 +81,26 @@ class EasyEnchantsSettingsGuiTest extends BukkitTestSupport {
     }
 
     @Test
+    void villagerAccelerationEntryOpensProtectedSubmenu() {
+        EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
+        EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);
+        settings.load();
+        EasyEnchantsSettingsGui gui = new EasyEnchantsSettingsGui(settings);
+        EasyEnchantsListener listener = new EasyEnchantsListener(settings, gui, new EnchantedBookApplicator());
+        PlayerMock player = MockBukkit.getMock().addPlayer("Admin");
+        player.setOp(true);
+        gui.open(player);
+        InventoryClickEvent event = new InventoryClickEvent(
+            player.getOpenInventory(), InventoryType.SlotType.CONTAINER, 13, ClickType.LEFT, InventoryAction.PICKUP_ALL
+        );
+
+        listener.onInventoryClick(event);
+
+        assertTrue(event.isCancelled());
+        assertInstanceOf(VillagerAccelerationMenuHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+    }
+
+    @Test
     void guiDragIntoTopInventoryIsCancelled() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
         EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);

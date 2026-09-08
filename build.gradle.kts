@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "me.easyenchants"
-version = "1.0.0"
+version = "26.2"
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))

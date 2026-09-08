@@ -5,6 +5,7 @@ import me.easyenchants.gui.EasyEnchantsSettingsGui;
 import me.easyenchants.gui.EasyEnchantsSettingsMenuHolder;
 import me.easyenchants.gui.LibrarianRollingGui;
 import me.easyenchants.gui.LibrarianRollingMenuHolder;
+import me.easyenchants.gui.VillagerAccelerationMenuHolder;
 import me.easyenchants.librarian.LibrarianRollingService;
 import me.easyenchants.settings.EasyEnchantsFeatureSettings;
 import org.bukkit.Material;
@@ -146,7 +147,9 @@ public final class EasyEnchantsListener implements Listener {
             event.setCancelled(true);
             if (event.getWhoClicked() instanceof Player player) {
                 if (holder instanceof EasyEnchantsSettingsMenuHolder && settingsGui != null) {
-                    settingsGui.handleClick(player, event.getRawSlot());
+                    settingsGui.handleClick(player, holder, event.getRawSlot());
+                } else if (holder instanceof VillagerAccelerationMenuHolder && settingsGui != null) {
+                    settingsGui.handleClick(player, holder, event.getRawSlot());
                 } else if (holder instanceof LibrarianRollingMenuHolder librarianHolder && librarianRollingGui != null) {
                     librarianRollingGui.handleClick(player, librarianHolder, event.getRawSlot());
                 }
@@ -159,6 +162,7 @@ public final class EasyEnchantsListener implements Listener {
 
     private boolean isProtectedMenu(InventoryHolder holder) {
         return holder instanceof EasyEnchantsSettingsMenuHolder
+            || holder instanceof VillagerAccelerationMenuHolder
             || holder instanceof LibrarianRollingMenuHolder;
     }
 

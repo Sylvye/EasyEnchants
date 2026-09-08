@@ -7,6 +7,7 @@ import me.easyenchants.gui.EasyEnchantsSettingsGui;
 import me.easyenchants.gui.LibrarianRollingGui;
 import me.easyenchants.librarian.LibrarianRollingService;
 import me.easyenchants.listener.EasyEnchantsListener;
+import me.easyenchants.listener.VillagerAccelerationListener;
 import me.easyenchants.settings.EasyEnchantsSettings;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -22,8 +23,8 @@ public class EasyEnchantsPlugin extends JavaPlugin {
         settings = new EasyEnchantsSettings(this);
         settings.load();
 
-        settingsGui = new EasyEnchantsSettingsGui(settings);
         ChatPromptManager promptManager = new ChatPromptManager(this);
+        settingsGui = new EasyEnchantsSettingsGui(settings, promptManager);
         LibrarianRollingService librarianRollingService = new LibrarianRollingService(this);
         LibrarianRollingGui librarianRollingGui = new LibrarianRollingGui(promptManager, librarianRollingService);
 
@@ -37,5 +38,6 @@ public class EasyEnchantsPlugin extends JavaPlugin {
             this
         );
         getServer().getPluginManager().registerEvents(promptManager, this);
+        getServer().getPluginManager().registerEvents(new VillagerAccelerationListener(this, settings), this);
     }
 }

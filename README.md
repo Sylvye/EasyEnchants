@@ -26,6 +26,10 @@ The emerald price is still randomized using the selected enchantment level, and 
 
 Administrators can run `/easyenchants` (or `/ee`) to open a menu that enables or disables each feature. Changes are saved immediately to `config.yml`.
 
+### Villager acceleration
+
+New baby villagers grow up faster, zombie villagers cure faster, and villagers can breed again sooner. The module is event-driven and only changes timers when breeding or curing begins. Its enable state and all three values can be changed from the in-game settings menu or `config.yml`.
+
 ## Requirements
 
 - Paper 1.21.11 or compatible
@@ -48,7 +52,7 @@ Administrators can run `/easyenchants` (or `/ee`) to open a menu that enables or
 
 ## Configuration
 
-Both features are enabled by default:
+All features are enabled by default. Villager growth and curing run at 5× speed, while breeding cooldown is one minute:
 
 ```yaml
 branches:
@@ -56,6 +60,11 @@ branches:
     enabled: true
   librarian-rolling:
     enabled: true
+  villager-acceleration:
+    enabled: true
+    growth-speed-multiplier: 5.0
+    curing-speed-multiplier: 5.0
+    breeding-cooldown-seconds: 60
 ```
 
 You can edit `plugins/EasyEnchants/config.yml` while the server is stopped, or use the in-game settings menu.
