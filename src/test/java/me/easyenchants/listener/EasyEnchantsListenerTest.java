@@ -109,6 +109,44 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
     }
 
     @Test
+    void bookCanSwapWithNonEnchantableItem() {
+        PlayerMock player = MockBukkit.getMock().addPlayer("Player");
+        InventoryClickEvent event = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        event.setCurrentItem(new ItemStack(Material.DIRT));
+        EasyEnchantsListener listener = listener(true, null);
+
+        listener.onInventoryClick(event);
+
+        assertFalse(event.isCancelled());
+    }
+
+    @Test
+    void enchantedBooksCanBeSwapped() {
+        PlayerMock player = MockBukkit.getMock().addPlayer("Player");
+        InventoryClickEvent event = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        event.setCurrentItem(book(1, Enchantment.UNBREAKING, 2));
+        EasyEnchantsListener listener = listener(true, null);
+
+        listener.onInventoryClick(event);
+
+        assertFalse(event.isCancelled());
+    }
+
+    @Test
+    void conflictingEnchantClickIsCancelled() {
+        PlayerMock player = MockBukkit.getMock().addPlayer("Player");
+        InventoryClickEvent event = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        event.getCurrentItem().addEnchantment(Enchantment.SHARPNESS, 3);
+        event.setCursor(book(1, Enchantment.SMITE, 3));
+        EasyEnchantsListener listener = listener(true, null);
+
+        listener.onInventoryClick(event);
+
+        assertTrue(event.isCancelled());
+        assertFalse(event.getCurrentItem().containsEnchantment(Enchantment.SMITE));
+    }
+
+    @Test
     void eligibleLuckRightClickOpensLibrarianRollingGui() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
         LibrarianRollingService service = new LibrarianRollingService(plugin);

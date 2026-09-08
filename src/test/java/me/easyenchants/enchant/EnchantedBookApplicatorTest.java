@@ -122,6 +122,28 @@ class EnchantedBookApplicatorTest extends BukkitTestSupport {
     }
 
     @Test
+    void nonEnchantableTargetIsNotTreatedAsAnInvalidAttempt() {
+        ItemStack target = new ItemStack(Material.DIRT);
+        ItemStack book = book(1, Enchantment.SHARPNESS, 3);
+
+        EnchantedBookApplicator.ApplicationResult result = applicator.apply(target, book);
+
+        assertFalse(result.applied());
+        assertFalse(result.incompatible());
+    }
+
+    @Test
+    void enchantedBookTargetIsNotTreatedAsAnInvalidAttempt() {
+        ItemStack target = book(1, Enchantment.UNBREAKING, 2);
+        ItemStack cursor = book(1, Enchantment.SHARPNESS, 3);
+
+        EnchantedBookApplicator.ApplicationResult result = applicator.apply(target, cursor);
+
+        assertFalse(result.applied());
+        assertFalse(result.incompatible());
+    }
+
+    @Test
     void overMaxLevelIsClamped() {
         ItemStack target = new ItemStack(Material.DIAMOND_SWORD);
         ItemStack book = book(1, Enchantment.SHARPNESS, 100);

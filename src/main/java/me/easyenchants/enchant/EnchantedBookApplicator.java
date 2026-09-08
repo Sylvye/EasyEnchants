@@ -1,6 +1,7 @@
 package me.easyenchants.enchant;
 
 import org.bukkit.Material;
+import org.bukkit.Registry;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
@@ -17,6 +18,9 @@ public final class EnchantedBookApplicator {
         EnchantmentStorageMeta bookMeta = (EnchantmentStorageMeta) bookCursor.getItemMeta();
         Map<Enchantment, Integer> storedEnchants = bookMeta.getStoredEnchants();
         if (storedEnchants.isEmpty()) {
+            return ApplicationResult.notApplied();
+        }
+        if (!isEnchantableTarget(target)) {
             return ApplicationResult.notApplied();
         }
 
@@ -66,6 +70,10 @@ public final class EnchantedBookApplicator {
             && bookCursor.getType() == Material.ENCHANTED_BOOK
             && bookCursor.getAmount() > 0
             && bookCursor.getItemMeta() instanceof EnchantmentStorageMeta;
+    }
+
+    private boolean isEnchantableTarget(ItemStack target) {
+        return Registry.ENCHANTMENT.stream().anyMatch(enchantment -> enchantment.canEnchantItem(target));
     }
 
     private boolean conflictsWithExisting(ItemMeta targetMeta, Enchantment candidate) {
