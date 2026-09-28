@@ -144,6 +144,44 @@ class EnchantedBookApplicatorTest extends BukkitTestSupport {
     }
 
     @Test
+    void matchingBooksUpgradeAndConsumeOneCursorBook() {
+        ItemStack target = book(1, Enchantment.POWER, 1);
+        ItemStack cursor = book(2, Enchantment.POWER, 1);
+
+        EnchantedBookApplicator.ApplicationResult result = applicator.combineBooks(target, cursor);
+
+        assertTrue(result.applied());
+        assertEquals(2, storedLevel(result.targetAfter(), Enchantment.POWER));
+        assertEquals(1, result.cursorAfter().getAmount());
+        assertEquals(1, storedLevel(target, Enchantment.POWER));
+    }
+
+    @Test
+    void oneUpgradeMergesAllOtherEnchantments() {
+        ItemStack target = book(1, Enchantment.POWER, 1, Enchantment.UNBREAKING, 3, Enchantment.MENDING, 1);
+        ItemStack cursor = book(1, Enchantment.POWER, 1, Enchantment.UNBREAKING, 2, Enchantment.EFFICIENCY, 4);
+
+        EnchantedBookApplicator.ApplicationResult result = applicator.combineBooks(target, cursor);
+
+        assertTrue(result.applied());
+        assertEquals(2, storedLevel(result.targetAfter(), Enchantment.POWER));
+        assertEquals(3, storedLevel(result.targetAfter(), Enchantment.UNBREAKING));
+        assertEquals(1, storedLevel(result.targetAfter(), Enchantment.MENDING));
+        assertEquals(4, storedLevel(result.targetAfter(), Enchantment.EFFICIENCY));
+        assertNull(result.cursorAfter());
+    }
+
+    @Test
+    void booksWithoutAnEqualUpgradableLevelDoNotCombine() {
+        ItemStack powerOne = book(1, Enchantment.POWER, 1);
+        assertFalse(applicator.combineBooks(powerOne, book(1, Enchantment.POWER, 2)).applied());
+        assertFalse(applicator.combineBooks(powerOne, book(1, Enchantment.UNBREAKING, 1)).applied());
+        ItemStack maxPower = book(1, Enchantment.POWER, Enchantment.POWER.getMaxLevel());
+        assertFalse(applicator.combineBooks(maxPower, maxPower).applied());
+        assertFalse(applicator.combineBooks(book(2, Enchantment.POWER, 1), powerOne).applied());
+    }
+
+    @Test
     void overMaxLevelIsClamped() {
         ItemStack target = new ItemStack(Material.DIAMOND_SWORD);
         ItemStack book = book(1, Enchantment.SHARPNESS, 100);
@@ -162,5 +200,9 @@ class EnchantedBookApplicatorTest extends BukkitTestSupport {
         }
         book.setItemMeta(meta);
         return book;
+    }
+
+    private int storedLevel(ItemStack book, Enchantment enchantment) {
+        return ((EnchantmentStorageMeta) book.getItemMeta()).getStoredEnchantLevel(enchantment);
     }
 }

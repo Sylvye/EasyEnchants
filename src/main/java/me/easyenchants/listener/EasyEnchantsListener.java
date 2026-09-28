@@ -71,7 +71,9 @@ public final class EasyEnchantsListener implements Listener {
             return;
         }
 
-        EnchantedBookApplicator.ApplicationResult result = applicator.apply(current, cursor);
+        EnchantedBookApplicator.ApplicationResult result = current.getType() == Material.ENCHANTED_BOOK
+            ? applicator.combineBooks(current, cursor)
+            : applicator.apply(current, cursor);
         if (result.incompatible()) {
             event.setCancelled(true);
             player.playSound(player.getLocation(), "minecraft:entity.villager.no", SoundCategory.PLAYERS, 1.0F, 1.0F);

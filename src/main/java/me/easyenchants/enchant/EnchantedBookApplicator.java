@@ -10,6 +10,38 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.Map;
 
 public final class EnchantedBookApplicator {
+    public ApplicationResult combineBooks(ItemStack target, ItemStack bookCursor) {
+        if (!isValidBook(target) || target.getAmount() != 1 || !isValidBook(bookCursor)) {
+            return ApplicationResult.notApplied();
+        }
+
+        EnchantmentStorageMeta targetMeta = (EnchantmentStorageMeta) target.getItemMeta();
+        EnchantmentStorageMeta cursorMeta = (EnchantmentStorageMeta) bookCursor.getItemMeta();
+        Map<Enchantment, Integer> targetEnchants = targetMeta.getStoredEnchants();
+        Map<Enchantment, Integer> cursorEnchants = cursorMeta.getStoredEnchants();
+        boolean upgradeAvailable = cursorEnchants.entrySet().stream().anyMatch(entry -> {
+            int level = entry.getValue();
+            return level > 0 && level < entry.getKey().getMaxLevel()
+                && targetEnchants.getOrDefault(entry.getKey(), 0) == level;
+        });
+        if (!upgradeAvailable) {
+            return ApplicationResult.notApplied();
+        }
+
+        ItemStack combined = target.clone();
+        EnchantmentStorageMeta combinedMeta = (EnchantmentStorageMeta) combined.getItemMeta();
+        for (Map.Entry<Enchantment, Integer> entry : cursorEnchants.entrySet()) {
+            Enchantment enchantment = entry.getKey();
+            int cursorLevel = entry.getValue();
+            int targetLevel = targetEnchants.getOrDefault(enchantment, 0);
+            int resultingLevel = targetLevel == cursorLevel && targetLevel > 0 && targetLevel < enchantment.getMaxLevel()
+                ? targetLevel + 1 : Math.max(targetLevel, cursorLevel);
+            combinedMeta.addStoredEnchant(enchantment, resultingLevel, true);
+        }
+        combined.setItemMeta(combinedMeta);
+        return new ApplicationResult(true, false, combined, consumeOneBook(bookCursor));
+    }
+
     public ApplicationResult apply(ItemStack target, ItemStack bookCursor) {
         if (!isValidTarget(target) || !isValidBook(bookCursor)) {
             return ApplicationResult.notApplied();

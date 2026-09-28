@@ -133,6 +133,32 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
     }
 
     @Test
+    void matchingBooksCombineOnInventoryClick() {
+        PlayerMock player = MockBukkit.getMock().addPlayer("Player");
+        InventoryClickEvent event = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        event.setCurrentItem(book(1, Enchantment.POWER, 1));
+        event.setCursor(book(2, Enchantment.POWER, 1));
+
+        listener(true, null).onInventoryClick(event);
+
+        assertTrue(event.isCancelled());
+        assertBook(event.getCurrentItem(), Enchantment.POWER, 2);
+        assertEquals(1, event.getCursor().getAmount());
+    }
+
+    @Test
+    void matchingBooksSwapWhenFeatureIsDisabled() {
+        PlayerMock player = MockBukkit.getMock().addPlayer("Player");
+        InventoryClickEvent event = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        event.setCurrentItem(book(1, Enchantment.POWER, 1));
+        event.setCursor(book(1, Enchantment.POWER, 1));
+
+        listener(false, null).onInventoryClick(event);
+
+        assertFalse(event.isCancelled());
+    }
+
+    @Test
     void conflictingEnchantClickIsCancelled() {
         PlayerMock player = MockBukkit.getMock().addPlayer("Player");
         InventoryClickEvent event = playerInventoryClick(player, Bukkit.createInventory(null, 27));

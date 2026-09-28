@@ -6,7 +6,7 @@ EasyEnchants is a Paper plugin that makes enchanting less tedious while preservi
 
 ### Drag-and-drop enchanted books
 
-Apply an enchanted book by picking it up and clicking it onto an item in your inventory. EasyEnchants applies every compatible enchantment from the book, combines matching levels into the next level (for example, Sharpness I + Sharpness I = Sharpness II), skips lower-level enchantments, and consumes one book when at least one enchantment is applied. Incompatible enchantments play an error sound.
+Apply an enchanted book by picking it up and clicking it onto an item in your inventory. EasyEnchants applies every compatible enchantment from the book, combines matching levels into the next level (for example, Sharpness I + Sharpness I = Sharpness II), skips lower-level enchantments, and consumes one book when at least one enchantment is applied. Incompatible enchantments play an error sound. Clicking a book onto another book combines them only when at least one matching enchantment can increase by one level; the resulting book keeps all enchantments at their highest resulting levels. Otherwise, the books swap normally.
 
 This bypasses the anvil interface and its level cost, but does not allow incompatible enchantments or levels above an enchantment's normal maximum.
 
