@@ -32,3 +32,15 @@ tasks.processResources {
 tasks.test {
     useJUnitPlatform()
 }
+
+// Optional headless Paper smoke tests; never bundled in the production plugin.
+val integration by sourceSets.creating {
+    compileClasspath += sourceSets.main.get().output + configurations.testRuntimeClasspath.get()
+    runtimeClasspath += output + compileClasspath
+}
+
+tasks.register<Jar>("integrationTestJar") {
+    dependsOn(tasks.named(integration.classesTaskName))
+    archiveBaseName.set("EasyEnchants-PaperTests")
+    from(integration.output)
+}

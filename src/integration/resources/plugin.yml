@@ -1,0 +1,5 @@
+name: EasyEnchantsPaperTests
+version: 1
+main: me.easyenchants.integration.TradeIntegrationPlugin
+api-version: '1.21.11'
+depend: [EasyEnchants]

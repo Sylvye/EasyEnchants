@@ -16,6 +16,7 @@ public final class EasyEnchantsSettingsGui {
     private static final int INVENTORY_SIZE = 27;
     private static final int DRAG_DROP_BOOKS_SLOT = 11;
     private static final int LIBRARIAN_ROLLING_SLOT = 15;
+    private static final int FLETCHER_ROLLING_SLOT = 17;
     private static final int VILLAGER_ACCELERATION_SLOT = 13;
     private static final int ACCELERATION_TOGGLE_SLOT = 10;
     private static final int GROWTH_MULTIPLIER_SLOT = 12;
@@ -47,6 +48,10 @@ public final class EasyEnchantsSettingsGui {
         holder.setInventory(inventory);
         inventory.setItem(DRAG_DROP_BOOKS_SLOT, dragDropBooksToggle());
         inventory.setItem(LIBRARIAN_ROLLING_SLOT, librarianRollingToggle());
+        boolean fletcher = settings.fletcherRollingEnabled();
+        inventory.setItem(FLETCHER_ROLLING_SLOT, GuiItems.namedItem(fletcher ? Material.LIME_DYE : Material.GRAY_DYE,
+            Component.text("Fletcher Rolling: " + (fletcher ? "Enabled" : "Disabled"), fletcher ? NamedTextColor.GREEN : NamedTextColor.RED),
+            List.of(Component.text("Click to toggle.", NamedTextColor.GRAY))));
         inventory.setItem(VILLAGER_ACCELERATION_SLOT, villagerAccelerationEntry());
         player.openInventory(inventory);
     }
@@ -62,6 +67,11 @@ public final class EasyEnchantsSettingsGui {
         }
         if (rawSlot == DRAG_DROP_BOOKS_SLOT) {
             settings.toggleDragAndDropBooks();
+            open(player);
+            return;
+        }
+        if (rawSlot == FLETCHER_ROLLING_SLOT) {
+            settings.toggleFletcherRolling();
             open(player);
             return;
         }

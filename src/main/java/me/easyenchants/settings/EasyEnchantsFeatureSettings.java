@@ -3,6 +3,8 @@ package me.easyenchants.settings;
 public interface EasyEnchantsFeatureSettings {
     boolean dragAndDropBooksEnabled();
 
+    default boolean fletcherRollingEnabled() { return true; }
+
     default boolean librarianRollingEnabled() {
         return true;
     }

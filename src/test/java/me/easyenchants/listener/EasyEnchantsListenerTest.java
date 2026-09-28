@@ -6,9 +6,9 @@ import me.easyenchants.enchant.EnchantedBookApplicator;
 import me.easyenchants.gui.ChatPromptManager;
 import me.easyenchants.gui.EasyEnchantsSettingsGui;
 import me.easyenchants.gui.LibrarianBookOption;
-import me.easyenchants.gui.LibrarianRollingGui;
-import me.easyenchants.gui.LibrarianRollingMenuHolder;
-import me.easyenchants.librarian.LibrarianRollingService;
+import me.easyenchants.gui.TradeRollingGui;
+import me.easyenchants.gui.TradeRollingMenuHolder;
+import me.easyenchants.trade.VillagerRollingService;
 import me.easyenchants.settings.EasyEnchantsFeatureSettings;
 import org.bukkit.Location;
 import org.bukkit.Bukkit;
@@ -147,9 +147,9 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
     }
 
     @Test
-    void eligibleLuckRightClickOpensLibrarianRollingGui() {
+    void eligibleLuckRightClickOpensTradeRollingGui() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = new LibrarianRollingService(plugin);
+        VillagerRollingService service = new VillagerRollingService(plugin);
         EasyEnchantsListener listener = librarianRollingListener(plugin, true, service);
         PlayerMock player = luckyPlayer();
         Villager villager = librarian();
@@ -158,13 +158,13 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
         listener.onPlayerInteractEntity(event);
 
         assertTrue(event.isCancelled());
-        assertInstanceOf(LibrarianRollingMenuHolder.class, player.getOpenInventory().getTopInventory().getHolder());
+        assertInstanceOf(TradeRollingMenuHolder.class, player.getOpenInventory().getTopInventory().getHolder());
     }
 
     @Test
     void librarianRollingDoesNotInterceptIneligibleInteractions() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = new LibrarianRollingService(plugin);
+        VillagerRollingService service = new VillagerRollingService(plugin);
         EasyEnchantsListener enabledListener = librarianRollingListener(plugin, true, service);
         EasyEnchantsListener disabledListener = librarianRollingListener(plugin, false, service);
 
@@ -185,7 +185,7 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
         traded.setRecipes(List.of(recipe(book(1, Enchantment.MENDING, 1), 1)));
         PlayerInteractEntityEvent tradedEvent = new PlayerInteractEntityEvent(tradedPlayer, traded);
         enabledListener.onPlayerInteractEntity(tradedEvent);
-        assertFalse(tradedEvent.isCancelled());
+        assertTrue(tradedEvent.isCancelled());
 
         PlayerMock disabledPlayer = luckyPlayer();
         PlayerInteractEntityEvent disabled = new PlayerInteractEntityEvent(disabledPlayer, librarian());
@@ -196,7 +196,7 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
     @Test
     void pendingSelectionIsAppliedByAcquireTradeEvent() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = new LibrarianRollingService(plugin);
+        VillagerRollingService service = new VillagerRollingService(plugin);
         EasyEnchantsListener listener = librarianRollingListener(plugin, true, service);
         PlayerMock player = luckyPlayer();
         Villager villager = librarian();
@@ -205,9 +205,11 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
 
         MerchantRecipe acquired = recipe(book(1, Enchantment.MENDING, 1), 0);
         VillagerAcquireTradeEvent event = new VillagerAcquireTradeEvent(villager, acquired);
-        listener.onVillagerAcquireTrade(event);
+        new TradeGuaranteeListener(plugin, service).onAcquire(event);
+        villager.setRecipes(List.of(event.getRecipe()));
+        MockBukkit.getMock().getScheduler().performTicks(2);
 
-        assertBook(event.getRecipe().getResult(), Enchantment.UNBREAKING, 3);
+        assertBook(villager.getRecipe(0).getResult(), Enchantment.UNBREAKING, 3);
     }
 
     private EasyEnchantsListener listener(boolean enabled, EasyEnchantsSettingsGui settingsGui) {
@@ -215,7 +217,7 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
         return new EasyEnchantsListener(settings, settingsGui, new EnchantedBookApplicator());
     }
 
-    private EasyEnchantsListener librarianRollingListener(EasyEnchantsPlugin plugin, boolean rollingEnabled, LibrarianRollingService service) {
+    private EasyEnchantsListener librarianRollingListener(EasyEnchantsPlugin plugin, boolean rollingEnabled, VillagerRollingService service) {
         EasyEnchantsFeatureSettings settings = new EasyEnchantsFeatureSettings() {
             @Override
             public boolean dragAndDropBooksEnabled() {
@@ -227,7 +229,7 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
                 return rollingEnabled;
             }
         };
-        LibrarianRollingGui gui = new LibrarianRollingGui(new ChatPromptManager(plugin), service);
+        TradeRollingGui gui = new TradeRollingGui(new ChatPromptManager(plugin), service);
         return new EasyEnchantsListener(settings, null, new EnchantedBookApplicator(), gui, service);
     }
 
@@ -238,7 +240,7 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
     }
 
     private Villager librarian() {
-        WorldMock world = MockBukkit.getMock().addSimpleWorld("world-" + System.nanoTime());
+        WorldMock world = tradeWorld("world-" + System.nanoTime());
         Villager villager = (Villager) world.spawnEntity(new Location(world, 0, 64, 0), EntityType.VILLAGER);
         villager.setProfession(Villager.Profession.LIBRARIAN);
         villager.setVillagerExperience(0);
@@ -253,8 +255,8 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
 
     private void assertBook(ItemStack item, Enchantment enchantment, int level) {
         EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
-        assertTrue(meta.hasStoredEnchant(enchantment));
-        assertEquals(level, meta.getStoredEnchantLevel(enchantment));
+        assertEquals(level, meta.getStoredEnchants().entrySet().stream()
+            .filter(entry -> entry.getKey().getKey().equals(enchantment.getKey())).findFirst().orElseThrow().getValue());
     }
 
     private InventoryClickEvent playerInventoryClick(PlayerMock player, Inventory chest) {

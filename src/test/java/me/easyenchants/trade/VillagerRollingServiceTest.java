@@ -1,4 +1,4 @@
-package me.easyenchants.librarian;
+package me.easyenchants.trade;
 
 import me.easyenchants.BukkitTestSupport;
 import me.easyenchants.EasyEnchantsPlugin;
@@ -26,11 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class LibrarianRollingServiceTest extends BukkitTestSupport {
+class VillagerRollingServiceTest extends BukkitTestSupport {
     @Test
     void selectionConsumesLuckAndReplacesExistingBookTrade() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = service(plugin, 4);
+        VillagerRollingService service = service(plugin, 4);
         PlayerMock player = luckyPlayer();
         Villager villager = librarian();
         MerchantRecipe original = recipe(book(Enchantment.MENDING, 1), 0, 12, true, 7, 0.2F, 3, -1, true);
@@ -53,9 +53,9 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
     }
 
     @Test
-    void selectionStoresPendingWhenNoBookTradeExists() {
+    void selectionImmediatelyConvertsNonBookSale() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = service(plugin, 8);
+        VillagerRollingService service = service(plugin, 8);
         PlayerMock player = luckyPlayer();
         Villager villager = librarian();
         MerchantRecipe nonBook = recipe(new ItemStack(Material.BOOKSHELF), 0, 16, true, 1, 0.05F, 0, 0, false);
@@ -63,20 +63,16 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
 
         assertTrue(service.applySelection(player, villager.getUniqueId(), LibrarianBookOption.of(Enchantment.UNBREAKING, 3)));
 
-        MerchantRecipe acquired = recipe(book(Enchantment.MENDING, 1), 0, 12, true, 3, 0.2F, 0, 0, false);
-        MerchantRecipe replacement = service.pendingReplacement(villager, acquired);
-
-        assertNotNull(replacement);
-        assertBook(replacement.getResult(), Enchantment.UNBREAKING, 3);
-        assertIngredients(replacement, 19);
-        assertNull(service.pendingReplacement(villager, acquired));
+        assertBook(villager.getRecipe(0).getResult(), Enchantment.UNBREAKING, 3);
+        assertIngredients(villager.getRecipe(0), 19);
+        assertFalse(villager.hasPotionEffect(PotionEffectType.LUCK));
     }
 
     @Test
     void nonTreasureCostUsesVanillaLevelRange() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService minimumService = service(plugin, 0);
-        LibrarianRollingService maximumService = new LibrarianRollingService(plugin, bound -> bound - 1);
+        VillagerRollingService minimumService = service(plugin, 0);
+        VillagerRollingService maximumService = new VillagerRollingService(plugin, bound -> bound - 1);
         LibrarianBookOption option = LibrarianBookOption.of(Enchantment.SHARPNESS, 3);
 
         assertEquals(11, minimumService.rollEmeraldCost(option));
@@ -86,7 +82,7 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
     @Test
     void treasureCostDoublesBeforeCap() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = service(plugin, 4);
+        VillagerRollingService service = service(plugin, 4);
 
         assertEquals(18, service.rollEmeraldCost(LibrarianBookOption.of(Enchantment.MENDING, 1)));
     }
@@ -94,7 +90,7 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
     @Test
     void emeraldCostCapsAtStackSize() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = new LibrarianRollingService(plugin, bound -> bound - 1);
+        VillagerRollingService service = new VillagerRollingService(plugin, bound -> bound - 1);
 
         assertEquals(64, service.rollEmeraldCost(LibrarianBookOption.of(Enchantment.SHARPNESS, 5)));
     }
@@ -102,7 +98,7 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
     @Test
     void selectionFailsWithoutLuck() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
-        LibrarianRollingService service = new LibrarianRollingService(plugin);
+        VillagerRollingService service = new VillagerRollingService(plugin);
         PlayerMock player = MockBukkit.getMock().addPlayer("Player");
         Villager villager = librarian();
         villager.setRecipes(List.of(recipe(book(Enchantment.MENDING, 1), 0, 12, true, 3, 0.2F, 0, 0, false)));
@@ -112,8 +108,8 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
         assertBook(villager.getRecipe(0).getResult(), Enchantment.MENDING, 1);
     }
 
-    private LibrarianRollingService service(EasyEnchantsPlugin plugin, int roll) {
-        return new LibrarianRollingService(plugin, fixedRoll(roll));
+    private VillagerRollingService service(EasyEnchantsPlugin plugin, int roll) {
+        return new VillagerRollingService(plugin, fixedRoll(roll));
     }
 
     private IntUnaryOperator fixedRoll(int roll) {
@@ -130,7 +126,7 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
     }
 
     private Villager librarian() {
-        WorldMock world = MockBukkit.getMock().addSimpleWorld("world-" + System.nanoTime());
+        WorldMock world = tradeWorld("world-" + System.nanoTime());
         Villager villager = (Villager) world.spawnEntity(new Location(world, 0, 64, 0), org.bukkit.entity.EntityType.VILLAGER);
         villager.setProfession(Villager.Profession.LIBRARIAN);
         villager.setVillagerExperience(0);
@@ -162,7 +158,7 @@ class LibrarianRollingServiceTest extends BukkitTestSupport {
 
     private void assertBook(ItemStack item, Enchantment enchantment, int level) {
         EnchantmentStorageMeta meta = (EnchantmentStorageMeta) item.getItemMeta();
-        assertTrue(meta.hasStoredEnchant(enchantment));
-        assertEquals(level, meta.getStoredEnchantLevel(enchantment));
+        assertEquals(level, meta.getStoredEnchants().entrySet().stream()
+            .filter(entry -> entry.getKey().getKey().equals(enchantment.getKey())).findFirst().orElseThrow().getValue());
     }
 }

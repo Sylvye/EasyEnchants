@@ -10,6 +10,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EasyEnchantsSettingsTest extends BukkitTestSupport {
     @Test
+    void fletcherDefaultsOnAndPersistsIndependentlyOfLibrarians() {
+        EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
+        EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);
+        settings.load();
+        assertTrue(settings.fletcherRollingEnabled());
+        settings.toggleFletcherRolling();
+        var reloaded = new EasyEnchantsSettings(plugin);
+        reloaded.load();
+        org.junit.jupiter.api.Assertions.assertFalse(reloaded.fletcherRollingEnabled());
+        assertTrue(reloaded.librarianRollingEnabled());
+    }
+
+    @Test
     void loadsVillagerAccelerationDefaults() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
         EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);

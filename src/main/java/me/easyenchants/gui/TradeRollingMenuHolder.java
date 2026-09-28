@@ -5,18 +5,28 @@ import org.bukkit.inventory.InventoryHolder;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
+import java.util.List;
+import me.easyenchants.trade.TradeOption;
 
-public final class LibrarianRollingMenuHolder implements InventoryHolder {
+public final class TradeRollingMenuHolder implements InventoryHolder {
     private final UUID villagerUuid;
     private final int page;
     private final String query;
     private Inventory inventory;
+    private final List<TradeOption> options;
 
-    public LibrarianRollingMenuHolder(UUID villagerUuid, int page, String query) {
+    public TradeRollingMenuHolder(UUID villagerUuid, int page, String query) {
+        this(villagerUuid, page, query, List.of());
+    }
+
+    public TradeRollingMenuHolder(UUID villagerUuid, int page, String query, List<TradeOption> options) {
+        this.options = List.copyOf(options);
         this.villagerUuid = villagerUuid;
         this.page = page;
         this.query = query == null ? "" : query;
     }
+
+    public List<TradeOption> options() { return options; }
 
     public UUID villagerUuid() {
         return villagerUuid;

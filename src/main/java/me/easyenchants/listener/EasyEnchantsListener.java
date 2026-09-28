@@ -3,19 +3,17 @@ package me.easyenchants.listener;
 import me.easyenchants.enchant.EnchantedBookApplicator;
 import me.easyenchants.gui.EasyEnchantsSettingsGui;
 import me.easyenchants.gui.EasyEnchantsSettingsMenuHolder;
-import me.easyenchants.gui.LibrarianRollingGui;
-import me.easyenchants.gui.LibrarianRollingMenuHolder;
+import me.easyenchants.gui.TradeRollingGui;
+import me.easyenchants.gui.TradeRollingMenuHolder;
 import me.easyenchants.gui.VillagerAccelerationMenuHolder;
-import me.easyenchants.librarian.LibrarianRollingService;
+import me.easyenchants.trade.VillagerRollingService;
 import me.easyenchants.settings.EasyEnchantsFeatureSettings;
 import org.bukkit.Material;
 import org.bukkit.SoundCategory;
-import org.bukkit.entity.AbstractVillager;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.VillagerAcquireTradeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -24,7 +22,6 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.potion.PotionEffectType;
 
@@ -32,8 +29,8 @@ public final class EasyEnchantsListener implements Listener {
     private final EasyEnchantsFeatureSettings settings;
     private final EasyEnchantsSettingsGui settingsGui;
     private final EnchantedBookApplicator applicator;
-    private final LibrarianRollingGui librarianRollingGui;
-    private final LibrarianRollingService librarianRollingService;
+    private final TradeRollingGui rollingGui;
+    private final VillagerRollingService rollingService;
 
     public EasyEnchantsListener(EasyEnchantsFeatureSettings settings, EasyEnchantsSettingsGui settingsGui, EnchantedBookApplicator applicator) {
         this(settings, settingsGui, applicator, null, null);
@@ -43,14 +40,14 @@ public final class EasyEnchantsListener implements Listener {
         EasyEnchantsFeatureSettings settings,
         EasyEnchantsSettingsGui settingsGui,
         EnchantedBookApplicator applicator,
-        LibrarianRollingGui librarianRollingGui,
-        LibrarianRollingService librarianRollingService
+        TradeRollingGui rollingGui,
+        VillagerRollingService rollingService
     ) {
         this.settings = settings;
         this.settingsGui = settingsGui;
         this.applicator = applicator;
-        this.librarianRollingGui = librarianRollingGui;
-        this.librarianRollingService = librarianRollingService;
+        this.rollingGui = rollingGui;
+        this.rollingService = rollingService;
     }
 
     @EventHandler
@@ -105,7 +102,7 @@ public final class EasyEnchantsListener implements Listener {
 
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
-        if (!settings.librarianRollingEnabled() || librarianRollingGui == null || librarianRollingService == null) {
+        if (rollingGui == null || rollingService == null) {
             return;
         }
         if (event.getHand() != EquipmentSlot.HAND) {
@@ -115,26 +112,12 @@ public final class EasyEnchantsListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        if (!player.hasPotionEffect(PotionEffectType.LUCK) || !librarianRollingService.isUnlockedLibrarian(villager)) {
+        if (!player.hasPotionEffect(PotionEffectType.LUCK) || !rollingService.canSelect(villager)
+            || (villager.getProfession() == Villager.Profession.LIBRARIAN ? !settings.librarianRollingEnabled() : !settings.fletcherRollingEnabled())) {
             return;
         }
         event.setCancelled(true);
-        librarianRollingGui.open(player, villager);
-    }
-
-    @EventHandler
-    public void onVillagerAcquireTrade(VillagerAcquireTradeEvent event) {
-        if (!settings.librarianRollingEnabled() || librarianRollingService == null) {
-            return;
-        }
-        AbstractVillager entity = event.getEntity();
-        if (!(entity instanceof Villager villager) || villager.getProfession() != Villager.Profession.LIBRARIAN) {
-            return;
-        }
-        MerchantRecipe replacement = librarianRollingService.pendingReplacement(villager, event.getRecipe());
-        if (replacement != null) {
-            event.setRecipe(replacement);
-        }
+        rollingGui.open(player, villager);
     }
 
     private boolean protectPluginGui(InventoryClickEvent event) {
@@ -150,8 +133,8 @@ public final class EasyEnchantsListener implements Listener {
                     settingsGui.handleClick(player, holder, event.getRawSlot());
                 } else if (holder instanceof VillagerAccelerationMenuHolder && settingsGui != null) {
                     settingsGui.handleClick(player, holder, event.getRawSlot());
-                } else if (holder instanceof LibrarianRollingMenuHolder librarianHolder && librarianRollingGui != null) {
-                    librarianRollingGui.handleClick(player, librarianHolder, event.getRawSlot());
+                } else if (holder instanceof TradeRollingMenuHolder tradeHolder && rollingGui != null) {
+                    rollingGui.handleClick(player, tradeHolder, event.getRawSlot());
                 }
             }
         } else if (movesItemsAcrossInventories(event.getAction())) {
@@ -163,7 +146,7 @@ public final class EasyEnchantsListener implements Listener {
     private boolean isProtectedMenu(InventoryHolder holder) {
         return holder instanceof EasyEnchantsSettingsMenuHolder
             || holder instanceof VillagerAccelerationMenuHolder
-            || holder instanceof LibrarianRollingMenuHolder;
+            || holder instanceof TradeRollingMenuHolder;
     }
 
     private boolean movesItemsAcrossInventories(InventoryAction action) {

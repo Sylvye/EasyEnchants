@@ -3,6 +3,8 @@ branches:
     enabled: true
   librarian-rolling:
     enabled: true
+  fletcher-rolling:
+    enabled: true
   villager-acceleration:
     enabled: true
     growth-speed-multiplier: 5.0

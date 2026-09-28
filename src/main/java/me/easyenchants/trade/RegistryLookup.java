@@ -1,4 +1,4 @@
-package me.easyenchants.librarian;
+package me.easyenchants.trade;
 
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;

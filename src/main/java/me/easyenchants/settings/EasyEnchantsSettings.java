@@ -12,6 +12,7 @@ public final class EasyEnchantsSettings implements EasyEnchantsFeatureSettings {
     private final JavaPlugin plugin;
     private boolean dragAndDropBooksEnabled;
     private boolean librarianRollingEnabled;
+    private boolean fletcherRollingEnabled;
     private boolean villagerAccelerationEnabled;
     private double villagerGrowthSpeedMultiplier;
     private double villagerCuringSpeedMultiplier;
@@ -25,6 +26,7 @@ public final class EasyEnchantsSettings implements EasyEnchantsFeatureSettings {
         plugin.saveDefaultConfig();
         plugin.reloadConfig();
         dragAndDropBooksEnabled = plugin.getConfig().getBoolean(DRAG_DROP_BOOKS_PATH, true);
+        fletcherRollingEnabled = plugin.getConfig().getBoolean("branches.fletcher-rolling.enabled", true);
         librarianRollingEnabled = plugin.getConfig().getBoolean(LIBRARIAN_ROLLING_PATH, true);
         villagerAccelerationEnabled = plugin.getConfig().getBoolean(VILLAGER_ACCELERATION_PATH + ".enabled", true);
         villagerGrowthSpeedMultiplier = validMultiplier(
@@ -50,6 +52,15 @@ public final class EasyEnchantsSettings implements EasyEnchantsFeatureSettings {
     @Override
     public boolean librarianRollingEnabled() {
         return librarianRollingEnabled;
+    }
+
+    @Override
+    public boolean fletcherRollingEnabled() { return fletcherRollingEnabled; }
+
+    public boolean toggleFletcherRolling() {
+        fletcherRollingEnabled = !fletcherRollingEnabled;
+        save("branches.fletcher-rolling.enabled", fletcherRollingEnabled);
+        return fletcherRollingEnabled;
     }
 
     public void setDragAndDropBooksEnabled(boolean enabled) {

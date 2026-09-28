@@ -25,6 +25,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EasyEnchantsSettingsGuiTest extends BukkitTestSupport {
     @Test
+    void fletcherToggleUpdatesSetting() {
+        EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
+        EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);
+        settings.load();
+        EasyEnchantsSettingsGui gui = new EasyEnchantsSettingsGui(settings);
+        PlayerMock player = MockBukkit.getMock().addPlayer("Admin");
+        player.setOp(true);
+        gui.open(player);
+        gui.handleClick(player, 17);
+        assertFalse(settings.fletcherRollingEnabled());
+        assertTrue(settings.librarianRollingEnabled());
+    }
+
+    @Test
     void guiClickIsCancelledAndToggleUpdatesSetting() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
         EasyEnchantsSettings settings = new EasyEnchantsSettings(plugin);
