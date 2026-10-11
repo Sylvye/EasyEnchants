@@ -10,6 +10,17 @@ Apply an enchanted book by picking it up and clicking it onto an item in your in
 
 This bypasses the anvil interface and its level cost, but does not allow incompatible enchantments or levels above an enchantment's normal maximum.
 
+With the updated Judgment plugin installed, its Enchantment Rules also apply before
+drag-and-drop changes gear: banned entries are skipped and merged levels are capped.
+Books are consumed only if at least one allowed enchantment improves the gear.
+Source books and book-to-book combining remain unrestricted. Update both plugin jars
+and restart the server to enable this integration.
+
+Plugins can handle the synchronous, cancellable `EnchantedBookApplyEvent` to clean
+the working target copy and set per-enchantment maximum levels (`0` rejects an
+enchantment). The event runs before inventory writes or book consumption, and is
+not fired for book-to-book combining. `getBook()` returns a defensive copy.
+
 ### Guaranteed villager trades
 
 With the **Luck** effect, right-click an adult librarian or a pre-master fletcher to open a searchable trade menu. Each accepted choice consumes your Luck effect once. Rejected choices consume nothing.

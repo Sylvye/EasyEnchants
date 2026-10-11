@@ -1,6 +1,7 @@
 package me.easyenchants.listener;
 
 import me.easyenchants.enchant.EnchantedBookApplicator;
+import me.easyenchants.event.EnchantedBookApplyEvent;
 import me.easyenchants.gui.EasyEnchantsSettingsGui;
 import me.easyenchants.gui.EasyEnchantsSettingsMenuHolder;
 import me.easyenchants.gui.TradeRollingGui;
@@ -9,6 +10,8 @@ import me.easyenchants.gui.VillagerAccelerationMenuHolder;
 import me.easyenchants.trade.VillagerRollingService;
 import me.easyenchants.settings.EasyEnchantsFeatureSettings;
 import org.bukkit.Material;
+import org.bukkit.Bukkit;
+import org.bukkit.Registry;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
@@ -55,7 +58,7 @@ public final class EasyEnchantsListener implements Listener {
         if (protectPluginGui(event)) {
             return;
         }
-        if (event instanceof InventoryCreativeEvent || !settings.dragAndDropBooksEnabled()) {
+        if (event.isCancelled() || event instanceof InventoryCreativeEvent || !settings.dragAndDropBooksEnabled()) {
             return;
         }
         if (!(event.getWhoClicked() instanceof Player player)) {
@@ -71,9 +74,25 @@ public final class EasyEnchantsListener implements Listener {
             return;
         }
 
-        EnchantedBookApplicator.ApplicationResult result = current.getType() == Material.ENCHANTED_BOOK
-            ? applicator.combineBooks(current, cursor)
-            : applicator.apply(current, cursor);
+        EnchantedBookApplicator.ApplicationResult result;
+        if (current.getType() == Material.ENCHANTED_BOOK) {
+            result = applicator.combineBooks(current, cursor);
+        } else if (Registry.ENCHANTMENT.stream().anyMatch(enchantment -> enchantment.canEnchantItem(current))) {
+            EnchantedBookApplyEvent application = new EnchantedBookApplyEvent(player, current, cursor);
+            Bukkit.getPluginManager().callEvent(application);
+            if (application.isCancelled()) {
+                event.setCancelled(true);
+                return;
+            }
+            result = applicator.apply(application.getTarget(), cursor, application::limitLevel);
+            if (!result.applied() && (application.hasLimits() || !current.equals(application.getTarget()))) {
+                event.setCancelled(true);
+                // Existing illegal gear can be corrected even when the book adds nothing.
+                if (!current.equals(application.getTarget())) event.setCurrentItem(application.getTarget());
+            }
+        } else {
+            result = applicator.apply(current, cursor);
+        }
         if (result.incompatible()) {
             event.setCancelled(true);
             player.playSound(player.getLocation(), "minecraft:entity.villager.no", SoundCategory.PLAYERS, 1.0F, 1.0F);

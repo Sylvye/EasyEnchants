@@ -3,6 +3,7 @@ package me.easyenchants.listener;
 import me.easyenchants.BukkitTestSupport;
 import me.easyenchants.EasyEnchantsPlugin;
 import me.easyenchants.enchant.EnchantedBookApplicator;
+import me.easyenchants.event.EnchantedBookApplyEvent;
 import me.easyenchants.gui.ChatPromptManager;
 import me.easyenchants.gui.EasyEnchantsSettingsGui;
 import me.easyenchants.gui.LibrarianBookOption;
@@ -17,6 +18,8 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.entity.VillagerAcquireTradeEvent;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -44,6 +47,64 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EasyEnchantsListenerTest extends BukkitTestSupport {
+    @Test
+    void applicationEventRunsBeforeLiveWritesAndCancellationConsumesNothing() {
+        PlayerMock player = MockBukkit.getMock().addPlayer();
+        InventoryClickEvent click = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        ItemStack originalTarget = click.getCurrentItem().clone();
+        ItemStack originalBooks = click.getCursor().clone();
+        var plugin = MockBukkit.createMockPlugin();
+        Bukkit.getPluginManager().registerEvent(EnchantedBookApplyEvent.class, new Listener() {},
+            EventPriority.NORMAL, (unused, event) -> {
+                EnchantedBookApplyEvent application = (EnchantedBookApplyEvent) event;
+                assertEquals(originalTarget, click.getCurrentItem());
+                assertEquals(originalBooks, click.getCursor());
+                application.getTarget().addEnchantment(Enchantment.UNBREAKING, 3);
+                application.setCancelled(true);
+            }, plugin);
+
+        listener(true, null).onInventoryClick(click);
+
+        assertTrue(click.isCancelled());
+        assertEquals(originalTarget, click.getCurrentItem());
+        assertEquals(originalBooks, click.getCursor());
+    }
+
+    @Test
+    void eventLevelLimitsApplyAfterMergingAndBookCopiesCannotChangeCursor() {
+        PlayerMock player = MockBukkit.getMock().addPlayer();
+        InventoryClickEvent click = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        click.getCurrentItem().addEnchantment(Enchantment.SHARPNESS, 3);
+        ItemStack books = click.getCursor().clone();
+        var plugin = MockBukkit.createMockPlugin();
+        Bukkit.getPluginManager().registerEvent(EnchantedBookApplyEvent.class, new Listener() {},
+            EventPriority.NORMAL, (unused, event) -> {
+                EnchantedBookApplyEvent application = (EnchantedBookApplyEvent) event;
+                application.setMaximumLevel(Enchantment.SHARPNESS, 3);
+                application.setMaximumLevel(Enchantment.SHARPNESS, 4);
+                application.getBook().setAmount(99);
+            }, plugin);
+
+        listener(true, null).onInventoryClick(click);
+
+        assertTrue(click.isCancelled());
+        assertEquals(3, click.getCurrentItem().getEnchantmentLevel(Enchantment.SHARPNESS));
+        assertEquals(books, click.getCursor());
+    }
+
+    @Test
+    void previouslyCancelledInventoryClickDoesNotApplyBook() {
+        PlayerMock player = MockBukkit.getMock().addPlayer();
+        InventoryClickEvent click = playerInventoryClick(player, Bukkit.createInventory(null, 27));
+        ItemStack books = click.getCursor().clone();
+        click.setCancelled(true);
+
+        listener(true, null).onInventoryClick(click);
+
+        assertFalse(click.getCurrentItem().containsEnchantment(Enchantment.SHARPNESS));
+        assertEquals(books, click.getCursor());
+    }
+
     @Test
     void disabledBranchDoesNotInterceptBookClick() {
         PlayerMock player = MockBukkit.getMock().addPlayer("Player");

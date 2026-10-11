@@ -8,6 +8,7 @@ import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Map;
+import java.util.function.ToIntBiFunction;
 
 public final class EnchantedBookApplicator {
     public ApplicationResult combineBooks(ItemStack target, ItemStack bookCursor) {
@@ -43,6 +44,11 @@ public final class EnchantedBookApplicator {
     }
 
     public ApplicationResult apply(ItemStack target, ItemStack bookCursor) {
+        return apply(target, bookCursor, (enchantment, level) -> level);
+    }
+
+    public ApplicationResult apply(ItemStack target, ItemStack bookCursor,
+                                   ToIntBiFunction<Enchantment, Integer> levelLimit) {
         if (!isValidTarget(target) || !isValidBook(bookCursor)) {
             return ApplicationResult.notApplied();
         }
@@ -71,6 +77,11 @@ public final class EnchantedBookApplicator {
 
             int clampedLevel = Math.min(level, enchantment.getMaxLevel());
             int currentLevel = targetMeta.getEnchantLevel(enchantment);
+            int resultingLevel = currentLevel == clampedLevel ? currentLevel + 1 : clampedLevel;
+            resultingLevel = Math.min(resultingLevel, levelLimit.applyAsInt(enchantment, resultingLevel));
+            if (resultingLevel <= currentLevel) {
+                continue;
+            }
             if (conflictsWithExisting(targetMeta, enchantment)) {
                 incompatible = true;
                 continue;
@@ -79,7 +90,6 @@ public final class EnchantedBookApplicator {
                 continue;
             }
 
-            int resultingLevel = currentLevel == clampedLevel ? currentLevel + 1 : clampedLevel;
             if (targetMeta.addEnchant(enchantment, resultingLevel, false)) {
                 changed = true;
             }
