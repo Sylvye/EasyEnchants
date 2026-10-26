@@ -25,6 +25,8 @@ not fired for book-to-book combining. `getBook()` returns a defensive copy.
 
 With the **Luck** effect, right-click an adult librarian or a pre-master fletcher to open a searchable trade menu. Each accepted choice consumes your Luck effect once. Rejected choices consume nothing.
 
+Opening the menu explains that choosing a trade consumes your entire Luck effect; closing it consumes nothing. Successful choices confirm the selected trade and remaining selection slots in chat, and say whether the trade is available now or which villager level unlocks it. If an unlocked tier's trades have not generated yet, the confirmation explains that the selection is reserved and waiting. Pending confirmations also explain the villager's Luck particles. Blocked rolling attempts explain the specific reason while preserving your Luck and allowing normal interaction. Normal trading without Luck stays quiet.
+
 **Librarians** can receive four selections, including duplicate books: one book trade each at novice, apprentice, journeyman, and expert. You can select books after trading with the villager, even at master. A selection replaces an existing unselected book first; otherwise it replaces a non-book trade from an unlocked eligible tier, preferring a sale over a trade that buys your items. Earlier guarantees are preserved. If the next slot is still locked, the book appears as soon as that tier unlocks—even if vanilla would have omitted a book.
 
 For example, four Luck effects can reserve Mending, Unbreaking III, Sharpness V, and Efficiency V on a novice. The first book appears immediately; the others appear at apprentice, journeyman, and expert. Selecting a fifth book is rejected.

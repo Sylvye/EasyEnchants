@@ -259,6 +259,7 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
         PlayerInteractEntityEvent noLuck = new PlayerInteractEntityEvent(playerWithoutLuck, librarian());
         enabledListener.onPlayerInteractEntity(noLuck);
         assertFalse(noLuck.isCancelled());
+        assertEquals(null, nextMessage(playerWithoutLuck));
 
         PlayerMock luckyPlayer = luckyPlayer();
         Villager farmer = librarian();
@@ -266,6 +267,21 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
         PlayerInteractEntityEvent nonLibrarian = new PlayerInteractEntityEvent(luckyPlayer, farmer);
         enabledListener.onPlayerInteractEntity(nonLibrarian);
         assertFalse(nonLibrarian.isCancelled());
+        assertEquals(null, nextMessage(luckyPlayer));
+
+        PlayerInteractEntityEvent offHand = new PlayerInteractEntityEvent(luckyPlayer, librarian(), org.bukkit.inventory.EquipmentSlot.OFF_HAND);
+        enabledListener.onPlayerInteractEntity(offHand);
+        assertFalse(offHand.isCancelled());
+        assertEquals(null, nextMessage(luckyPlayer));
+
+        Villager baby = librarian();
+        baby.setBaby();
+        PlayerInteractEntityEvent babyEvent = new PlayerInteractEntityEvent(luckyPlayer, baby);
+        enabledListener.onPlayerInteractEntity(babyEvent);
+        assertFalse(babyEvent.isCancelled());
+        assertEquals("Baby villagers cannot receive guaranteed trades. Wait until this villager grows up.", nextMessage(luckyPlayer));
+        assertEquals(null, nextMessage(luckyPlayer));
+        assertTrue(luckyPlayer.hasPotionEffect(PotionEffectType.LUCK));
 
         PlayerMock tradedPlayer = luckyPlayer();
         Villager traded = librarian();
@@ -278,6 +294,9 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
         PlayerInteractEntityEvent disabled = new PlayerInteractEntityEvent(disabledPlayer, librarian());
         disabledListener.onPlayerInteractEntity(disabled);
         assertFalse(disabled.isCancelled());
+        assertEquals("Trade rolling for librarians is disabled on this server.", nextMessage(disabledPlayer));
+        assertEquals(null, nextMessage(disabledPlayer));
+        assertTrue(disabledPlayer.hasPotionEffect(PotionEffectType.LUCK));
     }
 
     @Test
@@ -316,6 +335,7 @@ class EasyEnchantsListenerTest extends BukkitTestSupport {
                 return rollingEnabled;
             }
         };
+        if (!rollingEnabled) service = new VillagerRollingService(plugin, settings);
         TradeRollingGui gui = new TradeRollingGui(new ChatPromptManager(plugin), service);
         return new EasyEnchantsListener(settings, null, new EnchantedBookApplicator(), gui, service);
     }

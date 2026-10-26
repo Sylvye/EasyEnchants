@@ -9,13 +9,76 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.EnchantmentStorageMeta;
 import org.junit.jupiter.api.Test;
 import org.mockbukkit.mockbukkit.MockBukkit;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.Component;
+import java.util.Set;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class TradeRollingGuiTest extends BukkitTestSupport {
+    @Test
+    void openingTipDoesNotRepeatDuringNavigationOrSearchAndClosingPreservesLuck() {
+        EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
+        var prompts = new ChatPromptManager(plugin);
+        var gui = new TradeRollingGui(prompts, new VillagerRollingService(plugin));
+        var world = tradeWorld("guidance");
+        var villager = world.spawn(new org.bukkit.Location(world, 0, 64, 0), org.bukkit.entity.Villager.class);
+        villager.setProfession(org.bukkit.entity.Villager.Profession.LIBRARIAN);
+        var player = MockBukkit.getMock().addPlayer();
+        player.addPotionEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.LUCK, 200, 0));
+
+        gui.open(player, villager);
+        assertEquals("Choose a trade to guarantee it. Choosing consumes your entire Luck effect; closing this menu consumes nothing.", nextMessage(player));
+        assertNull(nextMessage(player));
+        var holder = (TradeRollingMenuHolder) player.getOpenInventory().getTopInventory().getHolder();
+        gui.handleClick(player, holder, 50);
+        holder = (TradeRollingMenuHolder) player.getOpenInventory().getTopInventory().getHolder();
+        gui.handleClick(player, holder, 48);
+        assertNull(nextMessage(player));
+
+        for (String query : List.of("mending", "clear", "cancel")) {
+            holder = (TradeRollingMenuHolder) player.getOpenInventory().getTopInventory().getHolder();
+            gui.handleClick(player, holder, 49);
+            assertEquals("Type a trade search query. Type clear to clear search.", nextMessage(player));
+            assertEquals("Type cancel to abort.", nextMessage(player));
+            var chat = new AsyncChatEvent(false, player, Set.of(), (source, name, message, viewer) -> message,
+                Component.text(query), Component.text(query), net.kyori.adventure.chat.SignedMessage.system(query, Component.text(query)));
+            prompts.onChat(chat);
+            assertTrue(chat.isCancelled());
+            MockBukkit.getMock().getScheduler().performTicks(1);
+            assertNull(nextMessage(player));
+        }
+        holder = (TradeRollingMenuHolder) player.getOpenInventory().getTopInventory().getHolder();
+        gui.handleClick(player, holder, 45);
+        assertTrue(player.hasPotionEffect(org.bukkit.potion.PotionEffectType.LUCK));
+        assertNull(nextMessage(player));
+    }
+
+    @Test
+    void reopeningStaleMenuExplainsUnavailableVillagerWithoutOpeningTip() {
+        EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);
+        var gui = gui(plugin);
+        var world = tradeWorld("stale");
+        var villager = world.spawn(new org.bukkit.Location(world, 0, 64, 0), org.bukkit.entity.Villager.class);
+        villager.setProfession(org.bukkit.entity.Villager.Profession.LIBRARIAN);
+        var player = MockBukkit.getMock().addPlayer();
+        gui.open(player, villager);
+        nextMessage(player);
+        var holder = (TradeRollingMenuHolder) player.getOpenInventory().getTopInventory().getHolder();
+        villager.remove();
+        gui.handleClick(player, holder, 50);
+        assertEquals("That villager is no longer available.", nextMessage(player));
+        assertNull(nextMessage(player));
+        assertNull(player.getOpenInventory().getTopInventory());
+        gui.open(player, villager);
+        assertEquals("That villager is no longer available.", nextMessage(player));
+        assertNull(nextMessage(player));
+    }
+
     @Test
     void filtersOptionsByDisplayNameAndKey() {
         EasyEnchantsPlugin plugin = MockBukkit.load(EasyEnchantsPlugin.class);

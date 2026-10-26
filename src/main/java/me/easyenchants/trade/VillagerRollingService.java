@@ -81,11 +81,23 @@ public final class VillagerRollingService {
     }
 
     public boolean canSelect(Villager villager) {
-        if (!supportedState(villager)) return false;
+        return selectionUnavailableReason(villager) == null;
+    }
+
+    /** Returns null when rolling is available; shared by interactions, menus, and selection validation. */
+    public String selectionUnavailableReason(Entity entity) {
+        if (!(entity instanceof Villager villager) || !villager.isValid()) return "That villager is no longer available.";
+        if (!supportedState(villager)) return "This villager's saved trade data is from an unsupported version. Ask a server administrator for help.";
         reconcile(villager);
-        return supports(villager) && standardTrades(villager) && enabled(villager)
-            && !(villager.getProfession() == Villager.Profession.FLETCHER && villager.getVillagerLevel() >= 5)
-            && remaining(villager) > 0;
+        if (!villager.isAdult()) return "Baby villagers cannot receive guaranteed trades. Wait until this villager grows up.";
+        if (!supports(villager)) return "Only librarians and fletchers can receive guaranteed trades.";
+        if (!enabled(villager)) return "Trade rolling for " + (villager.getProfession() == Villager.Profession.LIBRARIAN ? "librarians" : "fletchers") + " is disabled on this server.";
+        if (!standardTrades(villager)) return "Trade rolling is unavailable in worlds using experimental Villager Trade Rebalance.";
+        if (remaining(villager) <= 0) return "All eligible trade slots are already guaranteed. Existing selections cannot be changed.";
+        if (villager.getProfession() == Villager.Profession.FLETCHER && villager.getVillagerLevel() >= 5) {
+            return "Master fletchers cannot receive new selections. Choose a tipped-arrow trade before the villager reaches Master.";
+        }
+        return null;
     }
 
     public int remaining(Villager villager) {
@@ -107,8 +119,9 @@ public final class VillagerRollingService {
 
     public boolean applySelection(Player player, UUID villagerUuid, TradeOption option) {
         Entity entity = Bukkit.getEntity(villagerUuid);
-        if (!(entity instanceof Villager villager) || !entity.isValid()) return reject(player, "That villager is no longer available.");
-        if (!canSelect(villager)) return reject(player, "This villager has no eligible trade slots, or rolling is disabled.");
+        String unavailable = selectionUnavailableReason(entity);
+        if (unavailable != null) return reject(player, unavailable);
+        Villager villager = (Villager) entity;
         if (option.profession() != villager.getProfession() || !TradeCatalog.allowed(option)) return reject(player, "That trade is not available to this villager.");
         if (!player.hasPotionEffect(PotionEffectType.LUCK)) return reject(player, "You need Luck to choose a trade.");
 
@@ -122,6 +135,16 @@ public final class VillagerRollingService {
         player.removePotionEffect(PotionEffectType.LUCK);
         player.closeInventory();
         player.playSound(player.getLocation(), "minecraft:block.lectern.use", org.bukkit.SoundCategory.PLAYERS, 1.0F, 1.0F);
+        Slot saved = read(villager).slots.stream().filter(slot -> slot.tier == tier).findFirst().orElseThrow();
+        String timing = saved.fulfilled ? "The trade is available now."
+            : tier > villager.getVillagerLevel()
+                ? "Trade with this villager to reach " + tierName(tier) + "; your selected trade will appear then."
+                : "Your selection is reserved and waiting for this villager's " + tierName(tier) + " trades to generate.";
+        int remaining = remaining(villager);
+        String guidance = " Your entire Luck effect was consumed. Remaining selection slots: " + remaining + "."
+            + (saved.fulfilled ? "" : " The villager's Luck particles indicate a reserved trade.");
+        player.sendMessage(Component.text("Guaranteed " + option.displayName() + ". " + timing, NamedTextColor.GREEN)
+            .append(Component.text(guidance, NamedTextColor.GRAY)));
         return true;
     }
 

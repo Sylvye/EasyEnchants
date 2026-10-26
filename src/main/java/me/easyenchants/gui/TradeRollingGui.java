@@ -46,15 +46,24 @@ public final class TradeRollingGui {
     }
 
     public void open(Player player, Villager villager) {
-        open(player, villager.getUniqueId(), 0, "");
+        if (openMenu(player, villager.getUniqueId(), 0, "")) {
+            player.sendMessage(Component.text("Choose a trade to guarantee it. Choosing consumes your entire Luck effect; closing this menu consumes nothing.", NamedTextColor.GRAY));
+        }
     }
 
     public void open(Player player, UUID villagerUuid, int page, String query) {
-        if (!(Bukkit.getEntity(villagerUuid) instanceof Villager villager) || !rollingService.canSelect(villager)) {
+        openMenu(player, villagerUuid, page, query);
+    }
+
+    private boolean openMenu(Player player, UUID villagerUuid, int page, String query) {
+        var entity = Bukkit.getEntity(villagerUuid);
+        String unavailable = rollingService.selectionUnavailableReason(entity);
+        if (unavailable != null) {
             player.closeInventory();
-            player.sendMessage(Component.text("This villager has no eligible trade slots, or rolling is disabled.", NamedTextColor.RED));
-            return;
+            player.sendMessage(Component.text(unavailable, NamedTextColor.RED));
+            return false;
         }
+        Villager villager = (Villager) entity;
         List<TradeOption> filtered = filter(options == null ? TradeCatalog.options(villager.getProfession()) : options, query);
         int maxPage = maxPage(filtered.size());
         int safePage = Math.max(0, Math.min(page, maxPage));
@@ -87,6 +96,7 @@ public final class TradeRollingGui {
         ));
 
         player.openInventory(inventory);
+        return true;
     }
 
     public void handleClick(Player player, TradeRollingMenuHolder holder, int rawSlot) {

@@ -9,6 +9,8 @@ import me.easyenchants.gui.TradeRollingMenuHolder;
 import me.easyenchants.gui.VillagerAccelerationMenuHolder;
 import me.easyenchants.trade.VillagerRollingService;
 import me.easyenchants.settings.EasyEnchantsFeatureSettings;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.Bukkit;
 import org.bukkit.Registry;
@@ -133,8 +135,13 @@ public final class EasyEnchantsListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
-        if (!player.hasPotionEffect(PotionEffectType.LUCK) || !rollingService.canSelect(villager)
-            || (villager.getProfession() == Villager.Profession.LIBRARIAN ? !settings.librarianRollingEnabled() : !settings.fletcherRollingEnabled())) {
+        if (!player.hasPotionEffect(PotionEffectType.LUCK)
+            || (villager.getProfession() != Villager.Profession.LIBRARIAN && villager.getProfession() != Villager.Profession.FLETCHER)) {
+            return;
+        }
+        String unavailable = rollingService.selectionUnavailableReason(villager);
+        if (unavailable != null) {
+            player.sendMessage(Component.text(unavailable, NamedTextColor.RED));
             return;
         }
         event.setCancelled(true);

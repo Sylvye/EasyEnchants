@@ -46,6 +46,87 @@ class TradeGuaranteesTest extends BukkitTestSupport {
     }
 
     @Test
+    void immediateConfirmationNamesTradeAndReportsConsumedLuckAndRemainingSlots() {
+        Villager villager = villager(Villager.Profession.LIBRARIAN, 1);
+        villager.setRecipes(noBooks(1));
+        select(villager, LibrarianBookOption.of(Enchantment.SHARPNESS, 5));
+
+        assertEquals("Guaranteed Sharpness V. The trade is available now. Your entire Luck effect was consumed. Remaining selection slots: 3.", nextMessage(player));
+        assertNull(nextMessage(player));
+        // Retrying without Luck must not reserve another slot or report success.
+        assertFalse(service.applySelection(player, villager.getUniqueId(), LibrarianBookOption.of(Enchantment.MENDING, 1)));
+        assertEquals("You need Luck to choose a trade.", nextMessage(player));
+        assertEquals(3, service.remaining(villager));
+        assertNull(nextMessage(player));
+    }
+
+    @Test
+    void futureLibrarianConfirmationUsesSelectedTierAndExplainsParticles() {
+        Villager villager = villager(Villager.Profession.LIBRARIAN, 1);
+        villager.setRecipes(noBooks(1));
+        select(villager, LibrarianBookOption.of(Enchantment.MENDING, 1));
+        nextMessage(player);
+        select(villager, LibrarianBookOption.of(Enchantment.SHARPNESS, 5));
+
+        assertEquals("Guaranteed Sharpness V. Trade with this villager to reach Apprentice; your selected trade will appear then. Your entire Luck effect was consumed. Remaining selection slots: 2. The villager's Luck particles indicate a reserved trade.", nextMessage(player));
+        assertNull(nextMessage(player));
+        villager.setVillagerLevel(2);
+        villager.setRecipes(noBooks(2));
+        service.scheduleReconcile(villager);
+        MockBukkit.getMock().getScheduler().performTicks(2);
+        assertBook(villager.getRecipe(3), Enchantment.SHARPNESS, 5);
+        assertNull(nextMessage(player));
+    }
+
+    @Test
+    void fletcherConfirmationNamesArrowsAndMasterUnlock() {
+        Villager villager = villager(Villager.Profession.FLETCHER, 1);
+        ArrowOption option = new ArrowOption(PotionType.STRONG_HARMING);
+        select(villager, option);
+        assertEquals("Guaranteed " + option.displayName() + ". Trade with this villager to reach Master; your selected trade will appear then. Your entire Luck effect was consumed. Remaining selection slots: 0. The villager's Luck particles indicate a reserved trade.", nextMessage(player));
+        assertNull(nextMessage(player));
+        assertRejected(villager, option, "All eligible trade slots are already guaranteed. Existing selections cannot be changed.");
+    }
+
+    @Test
+    void unlockedTierWithoutRecipeReportsWaitingInsteadOfImmediateOrFutureUnlock() {
+        Villager villager = villager(Villager.Profession.LIBRARIAN, 2);
+        select(villager, LibrarianBookOption.of(Enchantment.SHARPNESS, 5));
+        assertEquals("Guaranteed Sharpness V. Your selection is reserved and waiting for this villager's Novice trades to generate. Your entire Luck effect was consumed. Remaining selection slots: 3. The villager's Luck particles indicate a reserved trade.", nextMessage(player));
+        assertNull(nextMessage(player));
+    }
+
+    @Test
+    void eligibilityFailuresExplainSpecificReasonAndPreserveLuck() {
+        Villager librarian = villager(Villager.Profession.LIBRARIAN, 1);
+        TradeOption book = LibrarianBookOption.of(Enchantment.MENDING, 1);
+        librarian.setBaby();
+        assertRejected(librarian, book, "Baby villagers cannot receive guaranteed trades. Wait until this villager grows up.");
+        librarian.setAdult();
+        ((TradeWorld) world).flags.add(org.bukkit.FeatureFlag.TRADE_REBALANCE);
+        assertRejected(librarian, book, "Trade rolling is unavailable in worlds using experimental Villager Trade Rebalance.");
+        ((TradeWorld) world).flags.clear();
+        var state = librarian.getPersistentDataContainer().getAdapterContext().newPersistentDataContainer();
+        state.set(new NamespacedKey(plugin, "version"), PersistentDataType.INTEGER, 2);
+        librarian.getPersistentDataContainer().set(new NamespacedKey(plugin, "trade_guarantees"), PersistentDataType.TAG_CONTAINER, state);
+        assertRejected(librarian, book, "This villager's saved trade data is from an unsupported version. Ask a server administrator for help.");
+        librarian.remove();
+        assertRejected(librarian, book, "That villager is no longer available.");
+        assertRejected(villager(Villager.Profession.FLETCHER, 5), new ArrowOption(PotionType.HARMING),
+            "Master fletchers cannot receive new selections. Choose a tipped-arrow trade before the villager reaches Master.");
+    }
+
+    private void assertRejected(Villager villager, TradeOption option, String reason) {
+        lucky();
+        assertEquals(reason, service.selectionUnavailableReason(villager));
+        assertFalse(service.canSelect(villager));
+        assertFalse(service.applySelection(player, villager.getUniqueId(), option));
+        assertEquals(reason, nextMessage(player));
+        assertNull(nextMessage(player));
+        assertTrue(player.hasPotionEffect(PotionEffectType.LUCK));
+    }
+
+    @Test
     void fourNoviceSelectionsFulfillOnePerTierWithoutOverwriting() {
         Villager villager = villager(Villager.Profession.LIBRARIAN, 1);
         villager.setRecipes(noBooks(1));
@@ -247,6 +328,10 @@ class TradeGuaranteesTest extends BukkitTestSupport {
         });
         lucky();
         assertFalse(disabled.applySelection(player, villager.getUniqueId(), LibrarianBookOption.of(Enchantment.SHARPNESS, 1)));
+        nextMessage(player); // Earlier accepted selections.
+        nextMessage(player);
+        assertEquals("Trade rolling for librarians is disabled on this server.", nextMessage(player));
+        assertNull(nextMessage(player));
         assertTrue(player.hasPotionEffect(PotionEffectType.LUCK));
         villager.setVillagerLevel(2);
         var recipes = new ArrayList<>(villager.getRecipes());
@@ -408,8 +493,11 @@ class TradeGuaranteesTest extends BukkitTestSupport {
     }
     private long bookCount(Villager villager) { return villager.getRecipes().stream().filter(r -> r.getResult().getType() == Material.ENCHANTED_BOOK).count(); }
     private void assertBook(MerchantRecipe recipe, Enchantment enchantment) {
+        assertBook(recipe, enchantment, 1);
+    }
+    private void assertBook(MerchantRecipe recipe, Enchantment enchantment, int level) {
         assertEquals(Material.ENCHANTED_BOOK, recipe.getResult().getType());
-        assertEquals(1, ((EnchantmentStorageMeta) recipe.getResult().getItemMeta()).getStoredEnchants().entrySet().stream()
+        assertEquals(level, ((EnchantmentStorageMeta) recipe.getResult().getItemMeta()).getStoredEnchants().entrySet().stream()
             .filter(entry -> entry.getKey().getKey().equals(enchantment.getKey())).findFirst().orElseThrow().getValue());
     }
 }

@@ -6,6 +6,11 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 
 public abstract class BukkitTestSupport {
     protected boolean tradeTagsUnavailable;
+
+    protected String nextMessage(org.mockbukkit.mockbukkit.entity.PlayerMock player) {
+        return org.bukkit.ChatColor.stripColor(player.nextMessage());
+    }
+
     @BeforeEach
     void setUpBukkit() {
         MockBukkit.mock();
